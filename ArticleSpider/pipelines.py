@@ -106,9 +106,10 @@ class MysqlTwistedPipline(object):
 
 class ArticleImagePipeline(ImagesPipeline):
     def item_completed(self, results, item, info):
-        for ok, values in results:
-            image_file_path = values['path']
+        if "front_image_url" in item:
+            for ok, values in results:
+                image_file_path = values['path']
 
-        item['front_image_path'] = image_file_path
+            item['front_image_path'] = image_file_path
 
         return item

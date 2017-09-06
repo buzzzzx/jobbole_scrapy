@@ -7,6 +7,8 @@ from urllib import parse
 
 from ArticleSpider.items import JobboleArticleItem
 from ArticleSpider.utils.common import get_md5
+from scrapy.loader import ItemLoader
+from ArticleSpider.items import ArticalItemLoader
 
 
 class JobboleSpider(scrapy.Spider):
@@ -35,50 +37,48 @@ class JobboleSpider(scrapy.Spider):
 
     def parse_detail(self, response):
         # 提取文章的具体字段
-        # xpath
 
         article_item = JobboleArticleItem()
 
-        front_image_url = response.meta.get("front_image_url", "")  # 文章封面图
-        title = response.xpath("//div[@class='entry-header']/h1/text()").extract()[0]
-        create_time = response.xpath("//p[@class='entry-meta-hide-on-mobile']/text()").extract()[0].strip().replace("·","").strip()
-        praise_num = response.xpath("//span[contains(@class, 'vote-post-up')]/h10/text()").extract()[0]
-        fav_num = response.xpath("//span[contains(@class, 'bookmark-btn')]/text()").extract()[0]
-        match_re = re.match(".*?(\d+).*", fav_num)
-        if match_re:
-            fav_num = int(match_re.group(1))
-        else:
-            fav_num = 0
-
-        comment_num = response.xpath("//a[@href='#article-comment']/span/text()").extract()[0]
-        match_re = re.match(".*?(\d+).*", comment_num)
-        if match_re:
-            comment_num = int(match_re.group(1))
-        else:
-            comment_num = 0
-
-        content = response.xpath("//div[@class='entry']").extract()[0]
-        tag_list = response.xpath("//p[@class='entry-meta-hide-on-mobile']/a/text()").extract()
-        tag_list = [element for element in tag_list if not element.strip().endswith("评论")]
-        tags = ",".join(tag_list)
-
-        article_item["url_object_id"] = get_md5(response.url)
-        article_item["title"] = title
-        try:
-            create_time = datetime.datetime.strptime(create_time, "%Y/%m/%d").date()
-        except Exception as e:
-            create_time = datetime.datetime.now().date()
-        article_item["create_time"] = create_time
-        article_item["url"] = response.url
-        article_item["front_image_url"] = [front_image_url]
-        article_item["praise_num"] = praise_num
-        article_item["comment_num"] = comment_num
-        article_item["fav_num"] = fav_num
-        article_item["content"] = content
-        article_item["tags"] = tags
-
-        yield article_item  # 使用yield可以将article_item自动传递到pipelines里面去
-
+        # xpath选择器
+        #
+        # front_image_url = response.meta.get("front_image_url", "")  # 文章封面图
+        # title = response.xpath("//div[@class='entry-header']/h1/text()").extract()[0]
+        # create_time = response.xpath("//p[@class='entry-meta-hide-on-mobile']/text()").extract()[0].strip().replace("·","").strip()
+        # praise_num = response.xpath("//span[contains(@class, 'vote-post-up')]/h10/text()").extract()[0]
+        # fav_num = response.xpath("//span[contains(@class, 'bookmark-btn')]/text()").extract()[0]
+        # match_re = re.match(".*?(\d+).*", fav_num)
+        # if match_re:
+        #     fav_num = int(match_re.group(1))
+        # else:
+        #     fav_num = 0
+        #
+        # comment_num = response.xpath("//a[@href='#article-comment']/span/text()").extract()[0]
+        # match_re = re.match(".*?(\d+).*", comment_num)
+        # if match_re:
+        #     comment_num = int(match_re.group(1))
+        # else:
+        #     comment_num = 0
+        #
+        # content = response.xpath("//div[@class='entry']").extract()[0]
+        # tag_list = response.xpath("//p[@class='entry-meta-hide-on-mobile']/a/text()").extract()
+        # tag_list = [element for element in tag_list if not element.strip().endswith("评论")]
+        # tags = ",".join(tag_list)
+        #
+        # article_item["url_object_id"] = get_md5(response.url)
+        # article_item["title"] = title
+        # try:
+        #     create_time = datetime.datetime.strptime(create_time, "%Y/%m/%d").date()
+        # except Exception as e:
+        #     create_time = datetime.datetime.now().date()
+        # article_item["create_time"] = create_time
+        # article_item["url"] = response.url
+        # article_item["front_image_url"] = [front_image_url]
+        # article_item["praise_num"] = praise_num
+        # article_item["comment_num"] = comment_num
+        # article_item["fav_num"] = fav_num
+        # article_item["content"] = content
+        # article_item["tags"] = tags
 
         # # css选择器
         #
@@ -97,9 +97,26 @@ class JobboleSpider(scrapy.Spider):
         #
         # content = response.css("div.entry").extract()[0]
         # tag_list = response.css("p.entry-meta-hide-on-mobile a::text").extract()
-        # tag_list = [element for element in tag_list if not element.strip().endwith("评论")]
+        # tag_list = [element for element in tag_list if not element.strip().endswith("评论")]
         # tags = ",".join(tag_list)
 
+        # 通过ItemLoader加载item
+        front_image_url = response.meta.get("front_image_url", "")  # 文章封面图
+        item_loader = ArticalItemLoader(item=JobboleArticleItem(), response=response)
+        item_loader.add_css("title", ".entry-header h1::text")
+        item_loader.add_value("url", response.url)
+        item_loader.add_value("url_object_id", get_md5(response.url))
+        item_loader.add_css("create_time", ".entry-meta-hide-on-mobile::text")
+        item_loader.add_value("front_image_url", [front_image_url])
+        item_loader.add_css("praise_num", "span[class*='vote-post-up'] h10::text")
+        item_loader.add_css("comment_num", "a[href='#article-comment'] span::text")
+        item_loader.add_css("fav_num", "span[class*='bookmark-btn']::text")
+        item_loader.add_css("content", "div.entry")
+        item_loader.add_css("tags", "p.entry-meta-hide-on-mobile a::text")
+
+        article_item = item_loader.load_item()
+
+        yield article_item  # 使用yield可以将article_item自动传递到pipelines里面去
 
 
 
