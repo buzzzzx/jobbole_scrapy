@@ -51,7 +51,7 @@ def return_value(value):
     return value
 
 
-class ArticalItemLoader(ItemLoader):
+class ArticleItemLoader(ItemLoader):
     # 自定义的ItemLoader
     default_output_processor = TakeFirst()
 

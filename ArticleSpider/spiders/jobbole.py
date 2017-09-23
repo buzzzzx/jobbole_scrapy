@@ -8,7 +8,7 @@ from urllib import parse
 from ArticleSpider.items import JobboleArticleItem
 from ArticleSpider.utils.common import get_md5
 from scrapy.loader import ItemLoader
-from ArticleSpider.items import ArticalItemLoader
+from ArticleSpider.items import ArticleItemLoader
 
 
 class JobboleSpider(scrapy.Spider):
@@ -102,7 +102,7 @@ class JobboleSpider(scrapy.Spider):
 
         # 通过ItemLoader加载item
         front_image_url = response.meta.get("front_image_url", "")  # 文章封面图
-        item_loader = ArticalItemLoader(item=JobboleArticleItem(), response=response)
+        item_loader = ArticleItemLoader(item=JobboleArticleItem(), response=response)
         item_loader.add_css("title", ".entry-header h1::text")
         item_loader.add_value("url", response.url)
         item_loader.add_value("url_object_id", get_md5(response.url))
